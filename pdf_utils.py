@@ -1,4 +1,7 @@
 import pdfplumber
+import logging
+
+logging.getLogger("pdfminer").setLevel(logging.ERROR)
 
 def extract_text(uploaded_file):
     """

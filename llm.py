@@ -1,28 +1,10 @@
-"""
-llm.py — Single-call LLM analysis on pre-filtered policy text.
-
-ARCHITECTURE:
-  Old approach: N chunks × 1 LLM call each = 10–15 calls, 5–10 minutes
-  New approach: text_utils.extract_relevant_text() reduces the document to
-                only the paragraphs that contain risk signals, then we make
-                ONE LLM call on that filtered text.
-
-  If the filtered text is still too long for a single reliable call (>6000 chars),
-  we split it into at most 2 focused calls and merge results.
-  This keeps total LLM calls at 1–2 regardless of document length.
-"""
-
 import requests
 import json
 import re
 
 OLLAMA_URL  = "http://localhost:11434/api/generate"
-MAX_SINGLE  = 6000   # characters — above this we split into 2 calls
+MAX_SINGLE  = 6000   
 
-
-# ─────────────────────────────────────────────────────────
-# Core LLM caller
-# ─────────────────────────────────────────────────────────
 def call_llm(prompt: str, timeout: int = 180) -> str:
     """POST to Ollama and return the response string."""
     try:
@@ -33,9 +15,11 @@ def call_llm(prompt: str, timeout: int = 180) -> str:
                 "prompt": prompt,
                 "stream": False,
                 "options": {
-                    "temperature": 0.05,   # near-deterministic for extraction
+                    # near-deterministic for extraction
+                    "temperature": 0.05,  
                     "top_p": 0.9,
-                    "num_ctx": 8192,       # increase context window if model supports it
+                    # increase context window if model supports it
+                    "num_ctx": 8192,    
                 }
             },
             timeout=timeout
@@ -50,9 +34,7 @@ def call_llm(prompt: str, timeout: int = 180) -> str:
         raise RuntimeError(f"LLM call failed: {e}")
 
 
-# ─────────────────────────────────────────────────────────
 # JSON extractor
-# ─────────────────────────────────────────────────────────
 def extract_json(text: str) -> str | None:
     """Robustly extract the first valid JSON object from LLM output."""
     clean = re.sub(r"```(?:json)?", "", text).strip()
@@ -78,9 +60,7 @@ def extract_json(text: str) -> str | None:
     return None
 
 
-# ─────────────────────────────────────────────────────────
 # Prompt builder
-# ─────────────────────────────────────────────────────────
 _EXTRACTION_PROMPT = """You are a strict Indian health insurance policy analyzer.
 
 TASK: Extract ONLY information explicitly present in the policy clauses below.
@@ -164,9 +144,7 @@ def _merge_results(a: dict, b: dict) -> dict:
     return merged
 
 
-# ─────────────────────────────────────────────────────────
 # Public API
-# ─────────────────────────────────────────────────────────
 def insurance_decoder(filtered_text: str) -> dict | None:
     """
     Analyse pre-filtered policy text with 1–2 LLM calls.
@@ -183,12 +161,12 @@ def insurance_decoder(filtered_text: str) -> dict | None:
         return None
 
     if len(text) <= MAX_SINGLE:
-        # ── Single call ──
+        # Single call
         raw = call_llm(_EXTRACTION_PROMPT.format(text=text))
         return _parse_result(raw)
 
     else:
-        # ── Two-call split ──
+        # Two-call split
         # Find a paragraph boundary near the midpoint
         mid = len(text) // 2
         split_at = text.rfind("\n\n", mid - 500, mid + 500)

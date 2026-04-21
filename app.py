@@ -8,7 +8,7 @@ from risk_engine import calculate_risk_score, AVG_TREATMENT_COST
 
 # Page config
 st.set_page_config(
-    page_title="Insurance Policy Decoder",
+    page_title="LegalX - Legal Summarizer",
     page_icon="",
     layout="wide"
 )
@@ -18,7 +18,6 @@ st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap');
 
-/* ── Dark base ── */
 *, *::before, *::after { box-sizing: border-box; }
 
 html, body,
@@ -45,7 +44,6 @@ code, pre, .mono {
     font-family: 'JetBrains Mono', monospace !important;
 }
 
-/* Streamlit widget labels */
 .stSlider label, .stNumberInput label, .stSelectbox label,
 .stMultiSelect label, .stFileUploader label {
     color: #a0a0b8 !important;
@@ -55,7 +53,6 @@ code, pre, .mono {
     text-transform: uppercase !important;
 }
 
-/* Inputs */
 .stTextInput input, .stNumberInput input,
 .stSelectbox [data-baseweb="select"] div,
 [data-baseweb="input"] input {
@@ -67,12 +64,10 @@ code, pre, .mono {
 
 .stSelectbox [data-baseweb="select"] div { color: #e8e8f0 !important; }
 
-/* Slider */
 .stSlider [data-testid="stSlider"] div[role="slider"] {
     background: #7c6af7 !important;
 }
 
-/* Buttons */
 .stFormSubmitButton button, .stButton button {
     background: linear-gradient(135deg, #7c6af7, #5b8def) !important;
     border: none !important;
@@ -88,7 +83,6 @@ code, pre, .mono {
     opacity: 0.88 !important;
 }
 
-/* Expander */
 [data-testid="stExpander"] {
     background: #13131e !important;
     border: 1px solid #2a2a3d !important;
@@ -111,19 +105,16 @@ code, pre, .mono {
 [data-testid="stExpander"] strong { color: #e8e8f0 !important; }
 [data-testid="stExpander"] hr { border-color: #2a2a3d !important; }
 
-/* Progress bar */
 .stProgress > div > div > div {
     background: linear-gradient(90deg, #7c6af7, #5b8def) !important;
 }
 .stProgress > div > div { background: #1e1e2e !important; }
 
-/* Alerts / info boxes */
 .stAlert { border-radius: 8px !important; }
 
-/* Streamlit caption */
 .stCaption { color: #606078 !important; font-size: 0.8rem !important; }
 
-/* ── App header ── */
+#App header
 .app-header {
     position: relative;
     overflow: hidden;
@@ -203,7 +194,7 @@ code, pre, .mono {
     font-weight: 700;
 }
 
-/* ── Upload zone ── */
+Upload zone
 .upload-zone {
     border: 1.5px dashed #2a2a40;
     border-radius: 12px;
@@ -575,10 +566,11 @@ st.markdown("""
 <div class="app-header">
     <div class="app-header-inner">
         <div>
-            <div class="app-header-title">Insurance Policy<br><em>Decoder</em></div>
+            <div class="app-header-title">LegalX -
+            Legal<br><em>Summarizer</em></div>
             <p class="app-header-sub">
                 Upload your health insurance policy. We translate 60 pages of legal language
-                into plain English — and show you exactly what to watch out for.
+                into plain English and show you exactly what to watch out for.
             </p>
         </div>
         <div class="header-stats-grid">
@@ -605,7 +597,7 @@ if not uploaded_file:
     """, unsafe_allow_html=True)
     st.stop()
 
-# ── Extract text ──
+# Extract text
 with st.spinner("Reading policy document..."):
     try:
         text = extract_text(uploaded_file)
@@ -619,7 +611,7 @@ if not text or len(text.strip()) < 200:
 
 chunks = chunk_text(text, chunk_size=3000, overlap=200)
 
-# ── LLM analysis ──
+# LLM analysis
 all_alerts, waiting_periods, exclusions = [], [], []
 copayments, hidden_limits, llm_risk_scores = [], [], []
 
@@ -683,7 +675,7 @@ if not llm_risk_scores and not exclusions and not waiting_periods and not all_al
 
 llm_avg_risk = int(sum(llm_risk_scores) / len(llm_risk_scores)) if llm_risk_scores else 50
 
-# ── Auto-extract policy parameters from LLM output ──
+# Auto-extract policy parameters from LLM output
 extracted_copay       = parse_copay_pct(copayments)
 extracted_room_rent   = parse_room_rent(hidden_limits)
 extracted_deductible  = parse_deductible(hidden_limits)
@@ -735,7 +727,7 @@ all_alerts = sorted(
 )
 
 if all_alerts:
-    section("Critical Alerts", "The most important red flags found in your policy document.")
+    section("Critical Alerts", "The most alarming flags found in your policy document.")
     for alert in all_alerts:
         a   = safe_dict(alert)
         msg = a.get("message") or a.get("value", "")
@@ -751,7 +743,7 @@ if all_alerts:
 if waiting_periods:
     section(
         "Waiting Period Traps",
-        "During these periods your claim will be rejected — even though you are paying the premium every month."
+        "During these periods your claim will be rejected; even though you are paying the premium every month."
     )
     for wp in waiting_periods:
         wp        = safe_dict(wp)
@@ -794,7 +786,7 @@ if copayments:
 if hidden_limits:
     section(
         "Hidden Coverage Limits",
-        "Your policy has a headline amount — but pays much less for specific treatments."
+        "Your policy has a headline amount; but pays much less for specific treatments."
     )
     for hl in hidden_limits:
         hl         = safe_dict(hl)
@@ -812,8 +804,8 @@ st.markdown("""
     <h2>Calculate Your Risk Score</h2>
     <p>
         The above reflects what is written in your policy document.
-        Now tell us about you — your age, health conditions, and income.
-        We will calculate exactly how risky this policy is for your specific situation.
+        Now tell us about your age, health conditions, and income.
+        We calculate exactly how risky this policy is for your specific situation.
     </p>
 </div>
 """, unsafe_allow_html=True)
@@ -824,11 +816,11 @@ with st.form("risk_form"):
     with col_a:
         age = st.slider(
             "Your Age",
-            min_value=18, max_value=80, value=35,
+            min_value=18, max_value=80, value=25,
             help="Affects the statistical likelihood of each disease in our risk model."
         )
         annual_income = st.number_input(
-            "Your Annual Income (Rs.)",
+            "Your Annual Income",
             min_value=1_00_000, max_value=5_00_00_000,
             value=8_00_000, step=50_000, format="%d",
             help="Used to determine if a major illness could push you into financial crisis."
@@ -838,12 +830,12 @@ with st.form("risk_form"):
         sum_insured = st.selectbox(
             "Your Policy's Total Cover",
             options=[2_00_000, 3_00_000, 5_00_000, 10_00_000, 15_00_000, 25_00_000, 50_00_000],
-            index=2,
+            default=[],
             format_func=fmt_inr,
             help="The maximum amount your insurer will pay in a claim year."
         )
         declared_diseases = st.multiselect(
-            "Your Pre-existing Conditions (if any)",
+            "Define Pre-existing Conditions",
             options=list(AVG_TREATMENT_COST.keys()),
             default=[],
             help="We will cross-check these against the waiting periods found in your policy."
@@ -854,7 +846,7 @@ with st.form("risk_form"):
 
 if submitted:
 
-    # ── Phase 2 progress bar ──
+    # Phase 2 progress bar
     st.markdown("""
     <div style="font-size:0.78rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;
                 color:#6868a8;margin-bottom:0.5rem;font-family:'JetBrains Mono',monospace">
@@ -931,7 +923,7 @@ if submitted:
 
     section("Your Personal Risk Report")
 
-    # ── Three headline numbers ──
+    # Three headline numbers 
     st.markdown(f"""
     <div class="result-row">
         <div class="result-box">
@@ -952,7 +944,7 @@ if submitted:
     meter(final_score)
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # ── Verdict ──
+    # Verdict
     tier   = risk["risk_tier"]
     detail = risk["risk_tier_detail"]
     if final_score >= 70:
@@ -962,7 +954,7 @@ if submitted:
     else:
         card("Your Verdict", "green", tier, detail)
 
-    # ── Catastrophic warning ──
+    # Catastrophic warning
     if risk["catastrophic_expenditure_warning"]:
         card(
             "Financial Crisis Warning",
@@ -970,11 +962,11 @@ if submitted:
             "A serious illness could wipe out a large part of your savings",
             f"Based on your income of {fmt_inr(annual_income)}/year, your expected out-of-pocket costs "
             f"({fmt_inr(oop)} over 5 years) would exceed 40% of your take-home savings. "
-            f"The WHO defines this as catastrophic health expenditure. "
+            f"WHO defines this as catastrophic health expenditure. "
             f"Consider increasing your sum insured or switching to a policy with fewer exclusions."
         )
 
-    # ── Per-condition breakdown ──
+    # Per-condition breakdown
     if declared_diseases:
         section(
             "What This Policy Means for Your Conditions",
@@ -1003,7 +995,7 @@ if submitted:
                 if oop_d > 0:
                     body += f"Over 5 years, your estimated out-of-pocket for {disease} is {fmt_inr(oop_d)}."
                 card(
-                    "Covered — with out-of-pocket costs",
+                    "Covered with out-of-pocket costs",
                     "yellow" if oop_d > 10_000 else "green",
                     f"{disease} is covered by your policy",
                     body

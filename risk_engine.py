@@ -4,10 +4,8 @@
 
 import math
 
-# ─────────────────────────────────────────────
-# Indian average hospitalization costs (INR)
 # Source: NHA Health Accounts, IRDAI Annual Reports
-# ─────────────────────────────────────────────
+
 AVG_TREATMENT_COST = {
     "Diabetes":            85_000,
     "Hypertension":        65_000,
@@ -21,12 +19,10 @@ AVG_TREATMENT_COST = {
     "Cataract":            55_000,
 }
 
-# ─────────────────────────────────────────────
 # Age-adjusted base disease probabilities
 # Based on ICMR epidemiological data
-# ─────────────────────────────────────────────
 BASE_DISEASE_PREVALENCE = {
-    "Diabetes":            [0.04, 0.10, 0.18, 0.28, 0.38],  # age bands
+    "Diabetes":            [0.04, 0.10, 0.18, 0.28, 0.38],
     "Hypertension":        [0.05, 0.12, 0.22, 0.35, 0.48],
     "Heart Disease":       [0.02, 0.06, 0.14, 0.25, 0.40],
     "Thyroid Disorders":   [0.03, 0.07, 0.12, 0.16, 0.20],
@@ -38,7 +34,7 @@ BASE_DISEASE_PREVALENCE = {
     "Cataract":            [0.00, 0.01, 0.05, 0.15, 0.35],
 }
 
-AGE_BANDS = [25, 35, 45, 55, 120]  # upper bounds of each band
+AGE_BANDS = [25, 35, 45, 55, 120]  
 
 
 def _age_band_index(age: int) -> int:
@@ -57,14 +53,11 @@ def disease_probability(age: int, disease: str) -> float:
     probs = BASE_DISEASE_PREVALENCE.get(disease, [0.05, 0.08, 0.12, 0.18, 0.25])
     return probs[band]
 
-
-# ─────────────────────────────────────────────
 # Expected Out-of-Pocket Calculator
 # Uses actuarial Expected Value formula:
 #   E[OOP] = P(claim) × [max(0, TreatmentCost − SumInsured)
 #             + CoPay% × min(TreatmentCost, SumInsured)
 #             + SubLimit shortfall]
-# ─────────────────────────────────────────────
 def expected_out_of_pocket(
     policy: dict,
     age: int,
@@ -77,14 +70,14 @@ def expected_out_of_pocket(
         rejection_risk  — probability-weighted chance of at least one claim rejection
         breakdown       — per-disease detail for transparency
     """
-    copay_rate     = policy.get("copay", 0.0)         # e.g. 0.2 for 20%
-    waiting        = policy.get("waiting_periods", {}) # {disease: years}
-    sub_limits     = policy.get("sub_limits", {})      # {disease: INR cap}
+    copay_rate     = policy.get("copay", 0.0)        
+    waiting        = policy.get("waiting_periods", {}) 
+    sub_limits     = policy.get("sub_limits", {})      
     room_rent_cap  = policy.get("room_rent_daily", None)
     deductible     = policy.get("deductible", 0.0)
 
     total_oop = 0.0
-    total_rejection_prob = 0.0  # use complement multiplication
+    total_rejection_prob = 0.0 
     no_rejection_prob = 1.0
     breakdown = {}
 
@@ -102,10 +95,10 @@ def expected_out_of_pocket(
         # Rule: if room rent cap < standard, ~40% of total bill may be proportionately reduced
         room_rent_penalty = 0.0
         if room_rent_cap is not None:
-            assumed_standard_rent = 5_000  # INR/day standard
+            assumed_standard_rent = 5_000 
             if room_rent_cap < assumed_standard_rent:
                 proportion = room_rent_cap / assumed_standard_rent
-                room_rent_penalty = cost * (1 - proportion) * 0.4  # 40% of bill linked to room
+                room_rent_penalty = cost * (1 - proportion) * 0.4  
 
         # Sub-limit shortfall
         sub_limit = sub_limits.get(disease, sum_insured)
@@ -158,13 +151,10 @@ def expected_out_of_pocket(
     total_rejection_prob = 1 - no_rejection_prob
     return round(total_oop), round(total_rejection_prob, 4), breakdown
 
-
-# ─────────────────────────────────────────────
 # Financial Exposure Ratio (FER)
 # FER = Expected OOP / Annual Disposable Income
 # Standard threshold: FER > 0.3 is "catastrophic"
 # (WHO definition of catastrophic health expenditure)
-# ─────────────────────────────────────────────
 def financial_exposure_ratio(expected_oop_5yr: float, annual_income: float) -> float:
     if annual_income <= 0:
         return 1.0
@@ -172,10 +162,9 @@ def financial_exposure_ratio(expected_oop_5yr: float, annual_income: float) -> f
     return min(expected_oop_5yr / disposable_income_5yr, 1.0)
 
 
-# ─────────────────────────────────────────────
 # Policy Exclusion Density Score
 # Penalizes policies with many exclusions / short waiting periods
-# ─────────────────────────────────────────────
+
 def exclusion_density_score(
     num_exclusions: int,
     num_waiting_periods: int,
@@ -192,14 +181,12 @@ def exclusion_density_score(
     # Sigmoid normalization: maps raw score to (0, 1)
     return 1 / (1 + math.exp(-0.1 * (raw - 15)))
 
-
-# ─────────────────────────────────────────────
 # Final Composite Risk Score
 # Combines:
 #   1. Financial Exposure Ratio (40%) — personal financial impact
 #   2. Claim Rejection Probability (35%) — actuarial rejection risk
 #   3. Exclusion Density (25%) — policy complexity / bad faith signals
-# ─────────────────────────────────────────────
+
 def calculate_risk_score(
     policy: dict,
     age: int,
@@ -255,7 +242,7 @@ def calculate_risk_score(
     )
     final_score = int(min(100, max(0, composite)))
 
-    # ── Risk tier labels ──
+    # Risk tier labels 
     if final_score >= 75:
         tier = "High Risk"
         tier_detail = (
@@ -278,7 +265,7 @@ def calculate_risk_score(
         tier = "Low Risk"
         tier_detail = "Policy appears transparent and claimant-friendly."
 
-    # ── Catastrophic expenditure warning (WHO threshold: OOP > 40% annual income) ──
+    # Catastrophic expenditure warning (WHO threshold: OOP > 40% annual income)
     catastrophic = fer >= 0.40
 
     return {

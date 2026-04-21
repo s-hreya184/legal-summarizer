@@ -1,33 +1,6 @@
-"""
-text_utils.py — Smart policy text pre-filter
-
-APPROACH: Instead of blindly chunking the full document and calling the LLM once
-per chunk (slow, redundant), we:
-
-1. Split the document into paragraphs (natural semantic units in policy docs).
-2. Score every paragraph by how many risk-signal keywords it contains.
-3. Also capture "context neighbours" — paragraphs immediately before/after a
-   high-signal paragraph, because policy sentences often span two paragraphs
-   (e.g. the keyword is in para N but the actual exclusion list is in para N+1).
-4. Separately preserve any paragraph that begins with a section-header pattern
-   (ALL CAPS, numbered headings, bold-style text) even if it has no keywords,
-   because headers introduce entire sections that matter.
-5. Return the filtered text as a single string for ONE LLM call, plus statistics
-   so the caller can report coverage to the user.
-
-This typically reduces a 15,000-word policy to 2,000–4,000 words of dense,
-relevant content — well within a single LLM context window — while retaining
-virtually all the information that matters for exclusion/waiting-period detection.
-"""
-
 import re
 from typing import NamedTuple
 
-
-# ─────────────────────────────────────────────────────────
-# Keyword groups — each group captures a different risk category
-# Weighted: higher weight = stronger signal
-# ─────────────────────────────────────────────────────────
 KEYWORD_GROUPS = {
     # Exclusions — highest weight, most directly actionable
     "exclusions": (4.0, [
@@ -74,8 +47,6 @@ KEYWORD_GROUPS = {
     ]),
 }
 
-# Section headers that signal a whole section of interest follows
-# Even if the header paragraph itself has no keywords, we keep it + next N paragraphs
 IMPORTANT_SECTION_HEADERS = [
     r"exclusion", r"not covered", r"what (is|are) not",
     r"waiting period", r"waiting clause",
@@ -224,16 +195,13 @@ def extract_relevant_text(text: str, min_score: float = 2.0) -> tuple[str, Filte
 
     selected_count = sum(include)
 
-    # Build the filtered text, preserving original paragraph order
-    # Add a visual separator between non-contiguous blocks so the LLM
-    # doesn't think unrelated paragraphs are connected
     filtered_parts = []
     prev_included = False
 
     for i, (para, inc) in enumerate(zip(paragraphs, include)):
         if inc:
             if filtered_parts and not prev_included:
-                filtered_parts.append("---")  # non-contiguous block separator
+                filtered_parts.append("---")  
             filtered_parts.append(para)
             prev_included = True
         else:
@@ -251,9 +219,6 @@ def extract_relevant_text(text: str, min_score: float = 2.0) -> tuple[str, Filte
 
     return filtered_text, stats
 
-
-# Keep chunk_text as a fallback (used nowhere by default now, but kept for
-# compatibility in case something imports it)
 def chunk_text(text, chunk_size=3000, overlap=200):
     """Legacy chunker — kept for compatibility. Use extract_relevant_text() instead."""
     chunks = []
